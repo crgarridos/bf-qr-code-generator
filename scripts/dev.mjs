@@ -4,7 +4,7 @@ import { copyFile, mkdir } from "node:fs/promises";
 const port = Number(process.env.PORT) || 8000;
 
 await mkdir("dist", { recursive: true });
-await copyFile("node_modules/sql.js/dist/sql-wasm.wasm", "dist/sql-wasm.wasm");
+await copyFile("node_modules/sql.js/dist/sql-wasm-browser.wasm", "dist/sql-wasm-browser.wasm");
 
 const ctx = await esbuild.context({
   entryPoints: ["src/main.ts"],

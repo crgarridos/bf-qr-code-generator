@@ -6,8 +6,7 @@ A minimal, TypeScript-based QR code generator that creates time-based QR codes w
 
 - 🔐 **SHA-256 Hash Generation** - Secure hash-based QR code validation
 - ⏱️ **Auto-refresh** - QR codes regenerate every 5 seconds with updated timestamps
-- 🗄️ **SQLite Configuration** - Static card, constant, and device values are loaded from a local SQLite database
-- 🗄️ **SQLite Defaults** - Configuration loads from the bundled database; manual edits last for the current session
+- 🗄️ **SQLite Configuration** - Static card, constant, and device values load from the bundled database; manual edits last for the current session
 - 📱 **Mobile-friendly** - Responsive design optimized for all screen sizes
 - 🚀 **No Backend Required** - Runs completely client-side
 - 🎨 **Clean UI** - Simple, modern interface
@@ -30,7 +29,13 @@ Where:
 
 The hash is computed from: `CARD_NUMBER + CONSTANT + TIMESTAMP + DEVICE_ID`
 
-The default card number, constant, and device ID are stored in `data/qr-config.sqlite` and read in the browser with SQL.js. URL parameters can override those defaults; settings are no longer read from or written to localStorage.
+The default card number, constant, and device ID are stored in `data/qr-config.sqlite` and read in the browser with SQL.js. URL parameters can override those defaults; the app does not read from or write to localStorage.
+
+## Views
+
+- The root page opens the QR result automatically when card number, constant, and device ID are available.
+- If any required value is missing, the app opens the configuration form.
+- Open `/setup/` to access configuration at any time. The **Mode debug** button is available from that screen.
 
 ## Running Locally
 
@@ -93,15 +98,22 @@ sqlite3 data/qr-config.sqlite < data/schema.sql
 
 ```
 bf-qr-code-generator/
-├── index.html          # Main HTML file
-├── styles.css          # Styling
+├── data/
+│   ├── qr-config.sqlite # Static QR configuration
+│   └── schema.sql       # Database schema and seed values
+├── setup/
+│   └── index.html       # /setup route redirect
+├── scripts/
+│   ├── build.mjs
+│   └── dev.mjs
 ├── src/
-│   └── main.ts         # TypeScript source code
-├── dist/
-│   ├── main.js         # Compiled & bundled JavaScript
-│   └── main.js.map     # Source maps for debugging
-├── package.json        # Dependencies and scripts
-└── tsconfig.json       # TypeScript configuration
+│   └── main.ts
+├── dist/                # Bundled JavaScript and SQL.js WASM
+├── index.html
+├── service-worker.js
+├── styles.css
+├── package.json
+└── tsconfig.json
 ```
 
 ## GitHub Pages Deployment

@@ -24,7 +24,10 @@
   </head>
   <body>
     <!-- Configuration Form -->
-    <div id="configSection">
+    <div id="loadingSection" class="loading-screen" role="status" aria-live="polite">
+      Loading QR configuration...
+    </div>
+    <div id="configSection" style="display: none">
       <h1>Configuration</h1>
       <p id="configStatus" class="config-status" role="status" aria-live="polite">
         Loading static QR settings from SQLite...

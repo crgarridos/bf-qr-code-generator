@@ -7,7 +7,7 @@ type StaticQrConfig = {
   deviceId: string;
 };
 
-async function loadStaticQrConfig(): Promise<StaticQrConfig> {
+async function loadStaticQrConfig(): Promise<StaticQrConfig | null> {
   const SQL = await initSqlJs({
     locateFile: (file) => new URL(`./dist/${file}`, document.baseURI).href
   });
@@ -22,20 +22,16 @@ async function loadStaticQrConfig(): Promise<StaticQrConfig> {
       'SELECT card_number, constant, device_id FROM qr_static_config WHERE id = 1'
     );
     const row = result[0]?.values[0];
-    if (!row || row.length !== 3) {
-      throw new Error('SQLite configuration must contain one complete qr_static_config row.');
-    }
+    if (!row) return null;
+    if (row.length !== 3) throw new Error('SQLite configuration row has an invalid shape.');
 
     const [cardNumber, constant, deviceId] = row;
     if (
       typeof cardNumber !== 'string' ||
       typeof constant !== 'string' ||
-      typeof deviceId !== 'string' ||
-      !cardNumber.trim() ||
-      !constant.trim() ||
-      !deviceId.trim()
+      typeof deviceId !== 'string'
     ) {
-      throw new Error('SQLite configuration contains missing or invalid values.');
+      throw new Error('SQLite configuration contains values with an invalid type.');
     }
 
     return { cardNumber, constant, deviceId };
@@ -152,6 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function initializeApp(): Promise<void> {
+  const loadingSection = document.getElementById('loadingSection') as HTMLDivElement;
   const configSection = document.getElementById('configSection') as HTMLDivElement;
   const qrSection = document.getElementById('qrSection') as HTMLDivElement;
   const qrSectionDebug = document.getElementById('qrSectionDebug') as HTMLDivElement;
@@ -169,17 +166,19 @@ async function initializeApp(): Promise<void> {
   const backBtnDebug = document.getElementById('backBtnDebug') as HTMLButtonElement;
   const skipQrBtnDebug = document.getElementById('skipQrBtnDebug') as HTMLButtonElement;
   const qrCardNumberLabel = document.getElementById('qrCardNumber') as HTMLSpanElement;
+  const appBasePath = new URL('.', window.location.href).pathname;
+  const setupRoutePath = `${appBasePath}setup/`;
 
   generateBtn.disabled = true;
   debugBtn.disabled = true;
   configStatus.textContent = 'Loading static QR settings from SQLite...';
 
-  let staticConfig: StaticQrConfig;
+  let staticConfig: StaticQrConfig | null = null;
+  let databaseError: string | null = null;
   try {
     staticConfig = await loadStaticQrConfig();
   } catch (error) {
-    configStatus.textContent = `Could not load static QR settings: ${errorMessage(error)}`;
-    return;
+    databaseError = errorMessage(error);
   }
 
   // URL parameters override the static SQLite defaults.
@@ -188,53 +187,113 @@ async function initializeApp(): Promise<void> {
   const urlDeviceId = urlParams.get('deviceId');
   const urlConstant = urlParams.get('constant');
 
-  cardNumberInput.value = urlCardNumber || staticConfig.cardNumber;
-  deviceIdInput.value = urlDeviceId || staticConfig.deviceId;
-  constantInput.value = urlConstant || staticConfig.constant;
-  configStatus.textContent = 'SQLite defaults loaded. URL parameters take precedence.';
+  cardNumberInput.value = urlCardNumber || staticConfig?.cardNumber || '';
+  deviceIdInput.value = urlDeviceId || staticConfig?.deviceId || '';
+  constantInput.value = urlConstant || staticConfig?.constant || '';
+  if (databaseError) {
+    configStatus.textContent = `Could not load static QR settings from SQLite: ${databaseError}. Enter values manually.`;
+  } else if (staticConfig) {
+    configStatus.textContent = 'SQLite defaults loaded. URL parameters take precedence.';
+  } else {
+    configStatus.textContent = 'No static SQLite settings found. Enter the required values below.';
+  }
   generateBtn.disabled = false;
   debugBtn.disabled = false;
 
-  function readForm(): { cardNumber: string; deviceId: string; constant: string } | null {
+  function currentForm(): { cardNumber: string; deviceId: string; constant: string } | null {
     const cardNumber = cardNumberInput.value.trim();
     const deviceId = deviceIdInput.value.trim();
     const constant = constantInput.value.trim();
 
-    if (!cardNumber || !deviceId || !constant) {
-      alert('Please fill in all fields');
-      return null;
-    }
+    if (!cardNumber || !deviceId || !constant) return null;
 
     return { cardNumber, deviceId, constant };
   }
 
+  function readForm(): { cardNumber: string; deviceId: string; constant: string } | null {
+    const form = currentForm();
+    if (!form) alert('Please fill in all fields');
+    return form;
+  }
+
   function showConfig() {
     stopQRRefresh();
+    loadingSection.style.display = 'none';
     qrSection.style.display = 'none';
     qrSectionDebug.style.display = 'none';
     configSection.style.display = 'block';
   }
 
-  generateBtn.addEventListener('click', () => {
-    const form = readForm();
-    if (!form) return;
+  function showNormalQr(form: { cardNumber: string; deviceId: string; constant: string }, updateLocation: boolean) {
+    if (updateLocation && (window.location.pathname !== appBasePath || window.location.search)) {
+      window.history.pushState(null, '', appBasePath);
+    }
+    stopQRRefresh();
+    loadingSection.style.display = 'none';
     qrCardNumberLabel.textContent = form.cardNumber;
     configSection.style.display = 'none';
     qrSectionDebug.style.display = 'none';
     qrSection.style.display = 'flex';
     startQRRefresh(VIEW_NEW, form.cardNumber, form.constant, form.deviceId);
+  }
+
+  function showDebugQr(form: { cardNumber: string; deviceId: string; constant: string }) {
+    stopQRRefresh();
+    loadingSection.style.display = 'none';
+    configSection.style.display = 'none';
+    qrSection.style.display = 'none';
+    qrSectionDebug.style.display = 'flex';
+    startQRRefresh(VIEW_DEBUG, form.cardNumber, form.constant, form.deviceId);
+  }
+
+  function openSetupRoute() {
+    if (window.location.pathname !== setupRoutePath) {
+      window.history.pushState(null, '', setupRoutePath);
+    }
+    showConfig();
+  }
+
+  function isSetupRoute(): boolean {
+    const currentPath = window.location.pathname.replace(/\/+$/, '');
+    const setupPath = setupRoutePath.replace(/\/+$/, '');
+    return currentPath === setupPath;
+  }
+
+  function showRouteFromLocation() {
+    const form = currentForm();
+    if (isSetupRoute() || !form) {
+      showConfig();
+    } else {
+      showNormalQr(form, false);
+    }
+  }
+
+  const requestedSetup = new URLSearchParams(window.location.search).get('view') === 'setup';
+  if (requestedSetup) {
+    window.history.replaceState(null, '', setupRoutePath);
+  }
+  window.addEventListener('popstate', showRouteFromLocation);
+
+  const initialForm = currentForm();
+  if (requestedSetup || isSetupRoute() || !initialForm) {
+    showConfig();
+  } else {
+    showNormalQr(initialForm, false);
+  }
+
+  generateBtn.addEventListener('click', () => {
+    const form = readForm();
+    if (!form) return;
+    showNormalQr(form, true);
   });
 
   debugBtn.addEventListener('click', () => {
     const form = readForm();
     if (!form) return;
-    configSection.style.display = 'none';
-    qrSection.style.display = 'none';
-    qrSectionDebug.style.display = 'flex';
-    startQRRefresh(VIEW_DEBUG, form.cardNumber, form.constant, form.deviceId);
+    showDebugQr(form);
   });
 
-  closeBtn.addEventListener('click', showConfig);
+  closeBtn.addEventListener('click', openSetupRoute);
   backBtnDebug.addEventListener('click', showConfig);
 
   helpBtn.addEventListener('click', () => {

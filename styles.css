@@ -42,6 +42,16 @@ button:disabled {
   opacity: 0.6;
 }
 
+.loading-screen {
+  display: flex;
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  color: var(--c-text-muted);
+  text-align: center;
+}
+
 /* ------------------------------------------------------------------
    Configuration screen
    ------------------------------------------------------------------ */

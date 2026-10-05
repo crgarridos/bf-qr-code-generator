@@ -10,4 +10,4 @@ await esbuild.build({
   sourcemap: true,
 });
 
-await copyFile("node_modules/sql.js/dist/sql-wasm.wasm", "dist/sql-wasm.wasm");
+await copyFile("node_modules/sql.js/dist/sql-wasm-browser.wasm", "dist/sql-wasm-browser.wasm");
