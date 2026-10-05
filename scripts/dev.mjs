@@ -1,6 +1,10 @@
 import * as esbuild from "esbuild";
+import { copyFile, mkdir } from "node:fs/promises";
 
 const port = Number(process.env.PORT) || 8000;
+
+await mkdir("dist", { recursive: true });
+await copyFile("node_modules/sql.js/dist/sql-wasm.wasm", "dist/sql-wasm.wasm");
 
 const ctx = await esbuild.context({
   entryPoints: ["src/main.ts"],

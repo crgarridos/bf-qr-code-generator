@@ -1,9 +1,11 @@
-const CACHE_NAME = "bf-qr-v1";
+const CACHE_NAME = "bf-qr-v2";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./dist/main.js",
+  "./dist/sql-wasm.wasm",
+  "./data/qr-config.sqlite",
   "./manifest.json",
   "./icon.svg",
   "./icon-maskable.svg",

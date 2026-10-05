@@ -37,6 +37,11 @@ button {
   font-family: inherit;
 }
 
+button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
 /* ------------------------------------------------------------------
    Configuration screen
    ------------------------------------------------------------------ */
@@ -53,6 +58,14 @@ button {
   font-weight: 800;
   color: var(--c-text);
   margin-bottom: 20px;
+  text-align: center;
+}
+
+.config-status {
+  margin: -10px 0 18px;
+  color: var(--c-text-muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
   text-align: center;
 }
 

@@ -26,6 +26,9 @@
     <!-- Configuration Form -->
     <div id="configSection">
       <h1>Configuration</h1>
+      <p id="configStatus" class="config-status" role="status" aria-live="polite">
+        Loading static QR settings from SQLite...
+      </p>
 
       <div class="form-group">
         <label for="cardNumber">Card Number</label>
@@ -46,8 +49,8 @@
         <input type="text" id="constant" placeholder="3M9" />
       </div>
 
-      <button id="generateBtn" class="btn">Generate QR Code</button>
-      <button id="debugBtn" class="btn-debug" type="button">Mode debug</button>
+      <button id="generateBtn" class="btn" disabled>Generate QR Code</button>
+      <button id="debugBtn" class="btn-debug" type="button" disabled>Mode debug</button>
     </div>
 
     <!-- Debug / original QR Display -->

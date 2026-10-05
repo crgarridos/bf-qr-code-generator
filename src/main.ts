@@ -1,10 +1,48 @@
 import QRCode from 'qrcode';
+import initSqlJs from 'sql.js';
 
-const STORAGE_KEYS = {
-  CARD_NUMBER: 'bf_card_number',
-  DEVICE_ID: 'bf_device_id',
-  CONSTANT: 'bf_constant'
+type StaticQrConfig = {
+  cardNumber: string;
+  constant: string;
+  deviceId: string;
 };
+
+async function loadStaticQrConfig(): Promise<StaticQrConfig> {
+  const SQL = await initSqlJs({
+    locateFile: (file) => new URL(`./dist/${file}`, document.baseURI).href
+  });
+  const databaseResponse = await fetch(new URL('./data/qr-config.sqlite', document.baseURI));
+  if (!databaseResponse.ok) {
+    throw new Error(`SQLite configuration could not be loaded (${databaseResponse.status}).`);
+  }
+
+  const database = new SQL.Database(new Uint8Array(await databaseResponse.arrayBuffer()));
+  try {
+    const result = database.exec(
+      'SELECT card_number, constant, device_id FROM qr_static_config WHERE id = 1'
+    );
+    const row = result[0]?.values[0];
+    if (!row || row.length !== 3) {
+      throw new Error('SQLite configuration must contain one complete qr_static_config row.');
+    }
+
+    const [cardNumber, constant, deviceId] = row;
+    if (
+      typeof cardNumber !== 'string' ||
+      typeof constant !== 'string' ||
+      typeof deviceId !== 'string' ||
+      !cardNumber.trim() ||
+      !constant.trim() ||
+      !deviceId.trim()
+    ) {
+      throw new Error('SQLite configuration contains missing or invalid values.');
+    }
+
+    return { cardNumber, constant, deviceId };
+  } finally {
+    database.close();
+  }
+}
 
 type ViewConfig = {
   canvasId: string;
@@ -110,9 +148,14 @@ function stopQRRefresh() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  void initializeApp();
+});
+
+async function initializeApp(): Promise<void> {
   const configSection = document.getElementById('configSection') as HTMLDivElement;
   const qrSection = document.getElementById('qrSection') as HTMLDivElement;
   const qrSectionDebug = document.getElementById('qrSectionDebug') as HTMLDivElement;
+  const configStatus = document.getElementById('configStatus') as HTMLParagraphElement;
 
   const cardNumberInput = document.getElementById('cardNumber') as HTMLInputElement;
   const deviceIdInput = document.getElementById('deviceId') as HTMLInputElement;
@@ -127,15 +170,30 @@ document.addEventListener('DOMContentLoaded', () => {
   const skipQrBtnDebug = document.getElementById('skipQrBtnDebug') as HTMLButtonElement;
   const qrCardNumberLabel = document.getElementById('qrCardNumber') as HTMLSpanElement;
 
-  // Checks for URL parameters first, then fall back to localStorage
+  generateBtn.disabled = true;
+  debugBtn.disabled = true;
+  configStatus.textContent = 'Loading static QR settings from SQLite...';
+
+  let staticConfig: StaticQrConfig;
+  try {
+    staticConfig = await loadStaticQrConfig();
+  } catch (error) {
+    configStatus.textContent = `Could not load static QR settings: ${errorMessage(error)}`;
+    return;
+  }
+
+  // URL parameters override the static SQLite defaults.
   const urlParams = new URLSearchParams(window.location.search);
   const urlCardNumber = urlParams.get('cardNumber');
   const urlDeviceId = urlParams.get('deviceId');
   const urlConstant = urlParams.get('constant');
 
-  cardNumberInput.value = urlCardNumber || localStorage.getItem(STORAGE_KEYS.CARD_NUMBER) || '';
-  deviceIdInput.value = urlDeviceId || localStorage.getItem(STORAGE_KEYS.DEVICE_ID) || '';
-  constantInput.value = urlConstant || localStorage.getItem(STORAGE_KEYS.CONSTANT) || '';
+  cardNumberInput.value = urlCardNumber || staticConfig.cardNumber;
+  deviceIdInput.value = urlDeviceId || staticConfig.deviceId;
+  constantInput.value = urlConstant || staticConfig.constant;
+  configStatus.textContent = 'SQLite defaults loaded. URL parameters take precedence.';
+  generateBtn.disabled = false;
+  debugBtn.disabled = false;
 
   function readForm(): { cardNumber: string; deviceId: string; constant: string } | null {
     const cardNumber = cardNumberInput.value.trim();
@@ -146,10 +204,6 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('Please fill in all fields');
       return null;
     }
-
-    localStorage.setItem(STORAGE_KEYS.CARD_NUMBER, cardNumber);
-    localStorage.setItem(STORAGE_KEYS.DEVICE_ID, deviceId);
-    localStorage.setItem(STORAGE_KEYS.CONSTANT, constant);
 
     return { cardNumber, deviceId, constant };
   }
@@ -196,4 +250,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!form) return;
     skipToNextQR(VIEW_DEBUG, form.cardNumber, form.constant, form.deviceId);
   });
-});
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error && error.message
+    ? error.message
+    : 'An unexpected error occurred.';
+}

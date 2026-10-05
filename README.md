@@ -6,7 +6,8 @@ A minimal, TypeScript-based QR code generator that creates time-based QR codes w
 
 - 🔐 **SHA-256 Hash Generation** - Secure hash-based QR code validation
 - ⏱️ **Auto-refresh** - QR codes regenerate every 5 seconds with updated timestamps
-- 💾 **Local Storage** - Configuration persists between sessions
+- 🗄️ **SQLite Configuration** - Static card, constant, and device values are loaded from a local SQLite database
+- 🗄️ **SQLite Defaults** - Configuration loads from the bundled database; manual edits last for the current session
 - 📱 **Mobile-friendly** - Responsive design optimized for all screen sizes
 - 🚀 **No Backend Required** - Runs completely client-side
 - 🎨 **Clean UI** - Simple, modern interface
@@ -29,11 +30,13 @@ Where:
 
 The hash is computed from: `CARD_NUMBER + CONSTANT + TIMESTAMP + DEVICE_ID`
 
+The default card number, constant, and device ID are stored in `data/qr-config.sqlite` and read in the browser with SQL.js. URL parameters can override those defaults; settings are no longer read from or written to localStorage.
+
 ## Running Locally
 
 ### Prerequisites
 
-- Node.js (v14 or higher)
+- Node.js 20 or higher
 - npm
 
 ### Installation
@@ -57,13 +60,13 @@ npm install
 npm run build
 ```
 
-4. Open `index.html` in your browser:
+4. Start the local server:
 
 ```bash
-open index.html
+npm run dev
 ```
 
-That's it! No server required - just open the HTML file directly.
+5. Open [http://localhost:8000](http://localhost:8000).
 
 ### Development
 
@@ -72,11 +75,18 @@ The project uses:
 - **TypeScript** for type-safe code
 - **esbuild** for fast bundling
 - **QRCode.js** for QR code generation
+- **SQL.js** to read the static SQLite database in the browser
 
 To rebuild after making changes:
 
 ```bash
 npm run build
+```
+
+To change the static defaults, edit `data/schema.sql` and recreate the database:
+
+```bash
+sqlite3 data/qr-config.sqlite < data/schema.sql
 ```
 
 ## Project Structure

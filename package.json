@@ -4,7 +4,7 @@
   "description": "QR Code Generator for Basic Fit",
   "main": "dist/main.js",
   "scripts": {
-    "build": "esbuild src/main.ts --bundle --outfile=dist/main.js --sourcemap",
+    "build": "node scripts/build.mjs",
     "dev": "node scripts/dev.mjs"
   },
   "keywords": [
@@ -16,12 +16,14 @@
   "author": "Denis Hamann",
   "license": "MIT",
   "devDependencies": {
+    "@types/sql.js": "^1.4.11",
     "@types/qrcode": "^1.5.6",
     "esbuild": "^0.27.1",
     "http-server": "^14.1.1",
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "sql.js": "^1.14.2"
   }
 }
